@@ -1,0 +1,28 @@
+{
+  "base_url": "http://52.64.157.221:6789/api",
+  "auth": {
+    "email": "user@example.com",
+    "password": "password",
+    "refresh_after_hours": 48
+  },
+  "test": {
+    "duration_days": 7,
+    "min_wait_seconds": 30,
+    "max_wait_seconds": 900,
+    "start_check_retries": 10,
+    "stop_check_retries": 10,
+    "check_interval_seconds": 5,
+    "request_timeout_seconds": 30
+  },
+  "selection": {
+    "company_id": "PUT_COMPANY_UUID_HERE",
+    "site_id": "PUT_SITE_UUID_HERE",
+    "mission_id": "PUT_MISSION_UUID_HERE",
+    "device_id": "PUT_DEVICE_UUID_HERE",
+    "device_name": "Drone-01"
+  },
+  "logging": {
+    "csv_path": "logs/soak_test_results.csv",
+    "txt_path": "logs/soak_test.log"
+  }
+}
