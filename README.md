@@ -126,3 +126,10 @@ python main.py
 ## 👨‍💻 Author
 
 ROBOPILOT Stability Testing Tool
+
+
+Company, Site, Robot, Mission
+
+    - Drone: FPT, Duy Tan, M4E Display Name, TestForDrone
+
+    - GO2: 현대건설, 힐스테이트 도안2단지, Unitree GO2, TestForGO2

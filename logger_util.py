@@ -24,7 +24,6 @@ CSV_FIELDS = [
     "error_details",
 ]
 
-
 class SoakLogger:
     def __init__(self, txt_path: str, csv_path: str) -> None:
         ensure_parent_dir(txt_path)
@@ -56,4 +55,10 @@ class SoakLogger:
         self.logger.info(message)
 
     def error(self, message: str) -> None:
+        self.logger.error(message)
+
+    def write_csv(self, row: Dict[str, Any]) -> None:
+        normalized = {field: row.get(field, "") for field in CSV_FIELDS}
+        with open(self.csv_path, "a", newline="", encoding="utf-8") as file:
+            writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
             writer.writerow(normalized)

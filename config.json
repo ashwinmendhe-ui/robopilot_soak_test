@@ -1,9 +1,23 @@
 {
   "base_url": "http://52.64.157.221:6789/api",
+  "endpoints": {
+    "login": "/v1/auth/login",
+    "missions_search": "/v1/missions/search",
+    "devices_list": "/v1/devices",
+    "stream_start": "/v1/stream/start",
+    "stream_stop": "/v1/stream/stop",
+    "stream_list": "/v1/stream"
+  },
   "auth": {
-    "email": "user@example.com",
-    "password": "password",
+    "email": "sysadmin@dhive.vn",
+    "password": "123456",
     "refresh_after_hours": 48
+  },
+  "selection": {
+    "company_name": "FPT",
+    "site_name": "Duy Tan",
+    "mission_name": "TestForDrone",
+    "device_name": "M4E Display Name"
   },
   "test": {
     "duration_days": 7,
@@ -13,13 +27,6 @@
     "stop_check_retries": 10,
     "check_interval_seconds": 5,
     "request_timeout_seconds": 30
-  },
-  "selection": {
-    "company_id": "PUT_COMPANY_UUID_HERE",
-    "site_id": "PUT_SITE_UUID_HERE",
-    "mission_id": "PUT_MISSION_UUID_HERE",
-    "device_id": "PUT_DEVICE_UUID_HERE",
-    "device_name": "Drone-01"
   },
   "logging": {
     "csv_path": "logs/soak_test_results.csv",
