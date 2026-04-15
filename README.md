@@ -127,7 +127,29 @@ python main.py
 
 ROBOPILOT Stability Testing Tool
 
+## Dir tree structure
+robopilot_soak_test/
+├── main.py
+├── auth.py
+├── stream_api.py
+├── logger_util.py
+├── utils.py
+├── config.json
+├── tests/
+│   ├── unit/
+│   │   ├── test_utils.py
+│   │   ├── test_auth.py
+│   │   ├── test_stream_api.py
+│   │   └── test_logger_util.py
+│   └── integration/
+│       ├── test_login_api.py
+│       ├── test_mission_lookup.py
+│       ├── test_device_lookup.py
+│       └── test_stream_flow.py
+├── requirements.txt
+└── .gitignore
 
+## Given inputs
 Company, Site, Robot, Mission
 
     - Drone: FPT, Duy Tan, M4E Display Name, TestForDrone
