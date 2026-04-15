@@ -11,7 +11,7 @@
   "auth": {
     "email": "sysadmin@dhive.vn",
     "password": "123456",
-    "refresh_after_hours": 48
+    "refresh_after_hours": 71
   },
   "selection": {
     "company_name": "FPT",

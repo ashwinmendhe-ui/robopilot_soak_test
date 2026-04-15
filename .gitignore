@@ -22,3 +22,7 @@ logs/
 # IDE
 .vscode/
 .idea/
+
+
+# config
+config.test.json
