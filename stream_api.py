@@ -63,28 +63,67 @@ class StreamApiClient:
                 return [item for item in data["data"] if isinstance(item, dict)]
             if isinstance(data.get("items"), list):
                 return [item for item in data["items"] if isinstance(item, dict)]
-            return [data]
+            return [data] if isinstance(data, dict) else []
         return []
 
-    def resolve_mission_context(self, headers: Dict[str, str], mission_name: str) -> Dict[str, Any]:
+    def resolve_mission_context(
+        self,
+        headers: Dict[str, str],
+        mission_name: str,
+        company_name: str | None = None,
+        site_name: str | None = None,
+    ) -> Dict[str, Any]:
         response = self.search_missions(headers, mission_name)
         response.raise_for_status()
 
         items = self._ensure_list(response.json())
 
-        for item in items:
-            if str(item.get("missionName", "")).strip().lower() == mission_name.strip().lower():
-                return {
-                    "mission_id": item["missionId"],
-                    "site_id": item["siteId"],
-                    "company_id": item["companyId"],
-                    "mission_name": item["missionName"],
-                    "site_name": item.get("siteName", ""),
-                    "company_name": item.get("companyName", ""),
-                    "device_type": item.get("deviceType", ""),
-                }
+        matched = [
+            item
+            for item in items
+            if str(item.get("missionName", "")).strip().lower() == mission_name.strip().lower()
+        ]
 
-        raise ValueError(f"Mission not found for name: {mission_name}")
+        if not matched:
+            raise ValueError(f"Mission not found for name: {mission_name}")
+
+        if company_name:
+            matched = [
+                item
+                for item in matched
+                if str(item.get("companyName", "")).strip().lower() == company_name.strip().lower()
+            ]
+
+        if site_name:
+            matched = [
+                item
+                for item in matched
+                if str(item.get("siteName", "")).strip().lower() == site_name.strip().lower()
+            ]
+
+        if not matched:
+            raise ValueError(
+                f"Mission found by name but not matching company/site. "
+                f"mission={mission_name}, company={company_name}, site={site_name}"
+            )
+
+        if len(matched) > 1:
+            raise ValueError(
+                f"Multiple missions found even after filtering. "
+                f"mission={mission_name}, company={company_name}, site={site_name}"
+            )
+
+        item = matched[0]
+
+        return {
+            "mission_id": item["missionId"],
+            "site_id": item["siteId"],
+            "company_id": item["companyId"],
+            "mission_name": item["missionName"],
+            "site_name": item.get("siteName", ""),
+            "company_name": item.get("companyName", ""),
+            "device_type": item.get("deviceType", ""),
+        }
 
     def resolve_device_context(
         self,
@@ -111,7 +150,13 @@ class StreamApiClient:
                     "sub_device_id": sub_device.get("subDeviceId", ""),
                 }
 
-        raise ValueError(f"Device not found for name: {device_name}")
+        available_names = [item.get("deviceName", "") for item in items]
+
+        raise ValueError(
+            f"Device not found for name: {device_name} "
+            f"under site_id={site_id}, company_id={company_id}. "
+            f"Available devices: {available_names}"
+        )
 
     def is_device_stream_active(self, headers: Dict[str, str], device_id: str) -> Tuple[bool, str, Optional[int]]:
         response = self.get_streams(headers)

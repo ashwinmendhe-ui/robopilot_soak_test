@@ -149,15 +149,19 @@ Company, Site, Robot, Mission
 ## option 1 in config
 ```
 "selection": {
+    "company_name": "현대건설",
+    "site_name": "힐스테이트 도안2단지",
     "mission_name": "TestForDrone",
-    "device_name": "M4E Display Name"
+    "device_name": "DJI M4E"
   }
 ```
 
 ## option 2 in config
 ```
 "selection": {
-    "mission_name": "TestForGO2",
+    "company_name": "현대건설",
+    "site_name": "힐스테이트 도안2단지",
+    "mission_name": "TestforGO2",
     "device_name": "Unitree GO2"
   }
 ```

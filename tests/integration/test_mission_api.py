@@ -1,14 +1,25 @@
 def test_mission_search_returns_expected_context(stream_client, auth_headers, test_config):
-    mission_name = test_config["selection"]["mission_name"]
+    selection = test_config["selection"]
 
     result = stream_client.resolve_mission_context(
         headers=auth_headers,
-        mission_name=mission_name,
+        mission_name=selection["mission_name"],
+        company_name=selection.get("company_name"),
+        site_name=selection.get("site_name"),
     )
 
-    assert result["mission_name"] == "TestForDrone"
-    assert result["company_name"] == "FPT"
-    assert result["site_name"] == "Duy Tan"
-    assert result["mission_id"] == "092240aa-cb6c-4ecf-abb6-be896ccb22fe"
-    assert result["site_id"] == "8dfb48fa-361d-4b32-8a9d-53757a5155b8"
-    assert result["company_id"] == "b933ca65-79b6-425f-a4c2-4c26900e8a6f"
+    # Basic assertions (generic, works for any config)
+    assert result["mission_name"] == selection["mission_name"]
+    assert result["company_name"] == selection["company_name"]
+    assert result["site_name"] == selection["site_name"]
+
+    # Optional strict assertions (only if you want fixed validation)
+    if selection["mission_name"] == "TestForDrone":
+        assert result["mission_id"] == "2e74c669-4c42-47d7-a29c-386edd1c1e21"
+        assert result["site_id"] == "dbc139ff-98b9-47db-9171-f5fe8351d1df"
+        assert result["company_id"] == "9c9bae60-f42c-42d2-a5dc-c2066c0f9d6c"
+
+    elif selection["mission_name"] == "TestForGO2":
+        assert result["mission_id"] == "7dc50d8e-b328-4342-95eb-57e1c35ef7c4"
+        assert result["site_id"] == "dbc139ff-98b9-47db-9171-f5fe8351d1df"
+        assert result["company_id"] == "9c9bae60-f42c-42d2-a5dc-c2066c0f9d6c"

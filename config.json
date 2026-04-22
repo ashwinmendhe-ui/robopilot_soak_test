@@ -11,13 +11,7 @@
   "auth": {
     "email": "sysadmin@dhive.vn",
     "password": "123456",
-    "refresh_after_hours": 71
-  },
-  "selection": {
-    "company_name": "FPT",
-    "site_name": "Duy Tan",
-    "mission_name": "TestForDrone",
-    "device_name": "M4E Display Name"
+    "refresh_after_hours": 48
   },
   "test": {
     "duration_days": 7,
@@ -26,8 +20,24 @@
     "start_check_retries": 10,
     "stop_check_retries": 10,
     "check_interval_seconds": 5,
-    "request_timeout_seconds": 30
+    "request_timeout_seconds": 30,
+    "min_gap_between_cycles_seconds": 10,
+    "max_gap_between_cycles_seconds": 30
   },
+  "selections": [
+    {
+      "company_name": "현대건설",
+      "site_name": "힐스테이트 도안2단지",
+      "mission_name": "TestForDrone",
+      "device_name": "DJI M4E"
+    },
+    {
+      "company_name": "현대건설",
+      "site_name": "힐스테이트 도안2단지",
+      "mission_name": "TestForGO2",
+      "device_name": "Unitree GO2"
+    }
+  ],
   "logging": {
     "csv_path": "logs/soak_test_results.csv",
     "txt_path": "logs/soak_test.log"
