@@ -8,19 +8,19 @@ from utils import ensure_parent_dir
 
 
 CSV_FIELDS = [
-    "timestamp",
+    "timestamp_utc",
+    "timestamp_kst",
     "cycle_no",
     "company_name",
     "site_name",
     "mission_name",
     "device_name",
-    "device_id",
-    "company_id",
-    "site_id",
-    "mission_id",
     "action",
     "result",
     "http_status",
+    "start_time_kst",
+    "end_time_kst",
+    "duration_minutes",
     "working_mode",
     "working_seconds",
     "idle_mode",
@@ -64,8 +64,22 @@ class SoakLogger:
     def error(self, message: str) -> None:
         self.logger.error(message)
 
+    def blank_line(self) -> None:
+        self.logger.info("")
+
     def write_csv(self, row: Dict[str, Any]) -> None:
         normalized = {field: row.get(field, "") for field in CSV_FIELDS}
         with open(self.csv_path, "a", newline="", encoding="utf-8") as file:
             writer = csv.DictWriter(file, fieldnames=CSV_FIELDS)
             writer.writerow(normalized)
+
+    def write_session_separator(self, timestamp_utc: str, timestamp_kst: str, message: str) -> None:
+        self.write_csv(
+            {
+                "timestamp_utc": timestamp_utc,
+                "timestamp_kst": timestamp_kst,
+                "action": "SESSION_START",
+                "result": "info",
+                "message": message,
+            }
+        )

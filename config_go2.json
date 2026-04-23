@@ -1,31 +1,47 @@
 {
   "base_url": "http://52.64.157.221:6789/api",
+
   "endpoints": {
     "login": "/v1/auth/login",
     "missions_search": "/v1/missions/search",
     "devices_list": "/v1/devices",
-    "stream_start": "/v1/stream/start",
-    "stream_stop": "/v1/stream/stop",
-    "stream_list": "/v1/stream"
+    "stream_start": "/v1/live/streams/start",
+    "stream_stop": "/v1/live/streams/stop"
   },
+
   "auth": {
     "email": "sysadmin@dhive.vn",
     "password": "123456",
-    "refresh_after_hours": 48
+    "refresh_after_hours": 71
   },
+
   "selection": {
     "company_name": "현대건설",
     "site_name": "힐스테이트 도안2단지",
-    "mission_name": "TestForGO2",
+    "mission_name": "TestforGO2",
     "device_name": "Unitree GO2"
   },
-  "test": {
-    "duration_days": 7,
-    "request_timeout_seconds": 30,
-    "start_check_retries": 10,
-    "stop_check_retries": 10,
-    "check_interval_seconds": 5
+
+  "stream_defaults": {
+    "url_type": 1,
+    "video_quality": 0,
+    "video_type": "zoom",
+    "video_id": {
+      "droneSn": "1581F7FVC25A700DF473",
+      "payloadIndex": {
+        "type": 99,
+        "subType": 0,
+        "position": 0
+      },
+      "videoType": "normal"
+    }
   },
+
+  "test": {
+    "duration_days": 0.005,
+    "request_timeout_seconds": 30
+  },
+
   "timing_profiles": {
     "working_time": {
       "short_min_seconds": 30,
@@ -40,8 +56,9 @@
       "long_max_seconds": 600
     }
   },
+
   "logging": {
-    "csv_path": "logs/go2_soak_test_results.csv",
-    "txt_path": "logs/go2_soak_test.log"
+    "csv_path": "logs/soak_test_results_GO2.csv",
+    "txt_path": "logs/soak_test_results_GO2.log"
   }
 }

@@ -1,31 +1,24 @@
 from __future__ import annotations
 
+import sys
 import time
 from datetime import timedelta
-from typing import Any, Dict
 
 from auth import AuthClient
 from logger_util import SoakLogger
 from stream_api import StreamApiClient
 from utils import (
-    iso_now,
+    build_stream_payload,
+    duration_minutes,
+    format_kst,
+    iso_kst,
+    iso_utc,
     load_config,
+    now_kst,
     now_utc,
     pick_duration,
     should_refresh_token,
 )
-
-
-def build_stream_payload(context: Dict[str, Any], stream_defaults: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "deviceSn": context["device_sn"],
-        "urlType": stream_defaults["url_type"],
-        "videoId": stream_defaults["video_id"],
-        "videoQuality": stream_defaults["video_quality"],
-        "videoType": stream_defaults["video_type"],
-        "missionId": context["mission_id"],
-        "playbackUrl": "",
-    }
 
 
 def resolve_context(stream_client, headers, selection, auth_session):
@@ -52,8 +45,9 @@ def resolve_context(stream_client, headers, selection, auth_session):
     }
 
 
-def main():
-    config = load_config("config.json")
+def main() -> None:
+    config_path = sys.argv[1] if len(sys.argv) > 1 else "config.json"
+    config = load_config(config_path)
 
     base_url = config["base_url"]
     endpoints = config["endpoints"]
@@ -67,6 +61,12 @@ def main():
     logger = SoakLogger(
         txt_path=log_cfg["txt_path"],
         csv_path=log_cfg["csv_path"],
+    )
+
+    logger.write_session_separator(
+        timestamp_utc=iso_utc(),
+        timestamp_kst=iso_kst(),
+        message=f"New soak test session started with config: {config_path}",
     )
 
     auth_client = AuthClient(
@@ -83,7 +83,7 @@ def main():
         timeout=test_cfg["request_timeout_seconds"],
     )
 
-    logger.info("🚀 Starting ROBOPILOT soak test")
+    logger.info(f"🚀 Starting ROBOPILOT soak test with config: {config_path}")
 
     session = auth_client.login()
     headers = auth_client.get_auth_header()
@@ -91,100 +91,152 @@ def main():
     context = resolve_context(stream_client, headers, selection, session)
 
     logger.info(
-        f"Resolved → Mission: {context['mission_name']} | Device: {context['device_name']}"
+        f"Resolved → Company: {context['company_name']} | "
+        f"Site: {context['site_name']} | "
+        f"Mission: {context['mission_name']} | "
+        f"Device: {context['device_name']}"
     )
 
     end_time = now_utc() + timedelta(days=test_cfg["duration_days"])
     cycle = 0
+    stream_active = False
 
-    while now_utc() < end_time:
-        cycle += 1
-        token_refreshed = "no"
+    try:
+        while now_utc() < end_time:
+            cycle += 1
+            token_refreshed = "no"
+            work_mode = ""
+            work_seconds = ""
+            idle_mode = ""
+            idle_seconds = ""
+            http_status = ""
+            session_id = ""
+            cycle_start_kst = None
+            cycle_end_kst = None
 
-        try:
-            # 🔁 Token refresh
-            if should_refresh_token(session.token_created_at, auth_cfg["refresh_after_hours"]):
-                session = auth_client.login()
-                headers = auth_client.get_auth_header()
-                token_refreshed = "yes"
-                logger.info("🔄 Token refreshed")
+            logger.blank_line()
+            logger.info(f"==================== Cycle {cycle} Start ====================")
 
-            # 🚀 START STREAM
-            start_payload = build_stream_payload(context, stream_defaults)
+            try:
+                if should_refresh_token(session.token_created_at, auth_cfg["refresh_after_hours"]):
+                    session = auth_client.login()
+                    headers = auth_client.get_auth_header()
+                    context = resolve_context(stream_client, headers, selection, session)
+                    token_refreshed = "yes"
+                    logger.info("🔄 Token refreshed")
 
-            logger.info(f"[Cycle {cycle}] ▶ START stream")
-            start_res = stream_client.start_stream(headers, start_payload)
-            start_res.raise_for_status()
+                cycle_start_kst = now_kst()
 
-            start_json = start_res.json()
+                start_payload = build_stream_payload(context, stream_defaults)
 
-            if start_json.get("code") != 0:
-                raise Exception(f"Start failed: {start_json}")
+                logger.info(f"[Cycle {cycle}] ▶ START stream")
+                start_res = stream_client.start_stream(headers, start_payload)
+                http_status = start_res.status_code
+                start_res.raise_for_status()
 
-            session_id = start_json["data"]["sessionId"]
+                start_json = start_res.json()
+                if start_json.get("code") != 0:
+                    raise Exception(f"Start failed: {start_json}")
 
-            logger.info(f"[Cycle {cycle}] ✅ Stream started | session={session_id}")
+                session_id = start_json["data"]["sessionId"]
+                stream_active = True
 
-            # ⏱ WORKING TIME
-            work_mode, work_seconds = pick_duration(timing_profiles["working_time"])
-            logger.info(f"[Cycle {cycle}] ⏳ Working {work_mode} → {work_seconds}s")
-            time.sleep(work_seconds)
+                logger.info(f"[Cycle {cycle}] ✅ Stream started | session={session_id}")
 
-            # 🛑 STOP STREAM
-            stop_payload = build_stream_payload(context, stream_defaults)
+                work_mode, work_seconds = pick_duration(timing_profiles["working_time"])
+                logger.info(f"[Cycle {cycle}] ⏳ Working {work_mode} → {work_seconds}s")
+                time.sleep(work_seconds)
 
-            logger.info(f"[Cycle {cycle}] ⏹ STOP stream")
-            stop_res = stream_client.stop_stream(headers, stop_payload)
-            stop_res.raise_for_status()
+                stop_payload = build_stream_payload(context, stream_defaults)
 
-            if stop_res.status_code != 200:
-                raise Exception("Stop failed")
+                logger.info(f"[Cycle {cycle}] ⏹ STOP stream")
+                stop_res = stream_client.stop_stream(headers, stop_payload)
+                http_status = stop_res.status_code
+                stop_res.raise_for_status()
 
-            logger.info(f"[Cycle {cycle}] ✅ Stream stopped")
+                if stop_res.status_code != 200:
+                    raise Exception("Stop failed")
 
-            # 💤 IDLE TIME
-            idle_mode, idle_seconds = pick_duration(timing_profiles["idle_time"])
-            logger.info(f"[Cycle {cycle}] 💤 Idle {idle_mode} → {idle_seconds}s")
+                stream_active = False
+                cycle_end_kst = now_kst()
 
-            # 📊 LOG CSV
-            logger.write_csv(
-                {
-                    "timestamp": iso_now(),
-                    "cycle_no": cycle,
-                    "company_name": context["company_name"],
-                    "site_name": context["site_name"],
-                    "mission_name": context["mission_name"],
-                    "device_name": context["device_name"],
-                    "action": "cycle_complete",
-                    "result": "success",
-                    "working_mode": work_mode,
-                    "working_seconds": work_seconds,
-                    "idle_mode": idle_mode,
-                    "idle_seconds": idle_seconds,
-                    "token_refreshed": token_refreshed,
-                }
-            )
+                logger.info(f"[Cycle {cycle}] ✅ Stream stopped")
 
-            time.sleep(idle_seconds)
+                idle_mode, idle_seconds = pick_duration(timing_profiles["idle_time"])
+                logger.info(f"[Cycle {cycle}] 💤 Idle {idle_mode} → {idle_seconds}s")
 
-        except Exception as e:
-            logger.error(f"[Cycle {cycle}] ❌ Error: {e}")
+                logger.write_csv(
+                    {
+                        "timestamp_utc": iso_utc(),
+                        "timestamp_kst": iso_kst(),
+                        "cycle_no": cycle,
+                        "company_name": context["company_name"],
+                        "site_name": context["site_name"],
+                        "mission_name": context["mission_name"],
+                        "device_name": context["device_name"],
+                        "action": "cycle_complete",
+                        "result": "success",
+                        "http_status": http_status,
+                        "start_time_kst": format_kst(cycle_start_kst) if cycle_start_kst else "",
+                        "end_time_kst": format_kst(cycle_end_kst) if cycle_end_kst else "",
+                        "duration_minutes": duration_minutes(cycle_start_kst, cycle_end_kst)
+                        if cycle_start_kst and cycle_end_kst else "",
+                        "working_mode": work_mode,
+                        "working_seconds": work_seconds,
+                        "idle_mode": idle_mode,
+                        "idle_seconds": idle_seconds,
+                        "token_refreshed": token_refreshed,
+                        "message": f"Cycle completed successfully | session={session_id}",
+                        "error_details": "",
+                    }
+                )
 
-            logger.write_csv(
-                {
-                    "timestamp": iso_now(),
-                    "cycle_no": cycle,
-                    "company_name": context.get("company_name", ""),
-                    "site_name": context.get("site_name", ""),
-                    "mission_name": context.get("mission_name", ""),
-                    "device_name": context.get("device_name", ""),
-                    "action": "cycle_error",
-                    "result": "failure",
-                    "message": str(e),
-                }
-            )
+                logger.info(f"==================== Cycle {cycle} End ====================")
+                time.sleep(idle_seconds)
 
-            time.sleep(10)
+            except Exception as e:
+                logger.error(f"[Cycle {cycle}] ❌ Error: {e}")
+
+                logger.write_csv(
+                    {
+                        "timestamp_utc": iso_utc(),
+                        "timestamp_kst": iso_kst(),
+                        "cycle_no": cycle,
+                        "company_name": context.get("company_name", ""),
+                        "site_name": context.get("site_name", ""),
+                        "mission_name": context.get("mission_name", ""),
+                        "device_name": context.get("device_name", ""),
+                        "action": "cycle_error",
+                        "result": "failure",
+                        "http_status": http_status,
+                        "start_time_kst": format_kst(cycle_start_kst) if cycle_start_kst else "",
+                        "end_time_kst": format_kst(now_kst()) if cycle_start_kst else "",
+                        "duration_minutes": duration_minutes(cycle_start_kst, now_kst())
+                        if cycle_start_kst else "",
+                        "working_mode": work_mode,
+                        "working_seconds": work_seconds,
+                        "idle_mode": idle_mode,
+                        "idle_seconds": idle_seconds,
+                        "token_refreshed": token_refreshed,
+                        "message": str(e),
+                        "error_details": repr(e),
+                    }
+                )
+
+                logger.info(f"==================== Cycle {cycle} End With Error ====================")
+                time.sleep(10)
+
+    except KeyboardInterrupt:
+        logger.info("🛑 Manual stop received (Ctrl+C)")
+
+        if stream_active:
+            try:
+                logger.info("⚠️ Stopping active stream before exit...")
+                stop_payload = build_stream_payload(context, stream_defaults)
+                stream_client.stop_stream(headers, stop_payload)
+                logger.info("✅ Stream stopped during shutdown")
+            except Exception as e:
+                logger.error(f"Failed to stop stream during shutdown: {e}")
 
     logger.info("✅ Soak test completed")
 

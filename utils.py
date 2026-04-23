@@ -8,8 +8,14 @@ from typing import Any, Dict, Tuple
 
 
 UTC = timezone.utc
+KST = timezone(timedelta(hours=9))
 
-def build_stream_payload(context: Dict[str, Any], stream_defaults: Dict[str, Any], playback_url: str = "") -> Dict[str, Any]:
+
+def build_stream_payload(
+    context: Dict[str, Any],
+    stream_defaults: Dict[str, Any],
+    playback_url: str = ""
+) -> Dict[str, Any]:
     return {
         "deviceSn": context["device_sn"],
         "urlType": stream_defaults["url_type"],
@@ -34,8 +40,24 @@ def now_utc() -> datetime:
     return datetime.now(UTC)
 
 
-def iso_now() -> str:
+def now_kst() -> datetime:
+    return datetime.now(KST)
+
+
+def iso_utc() -> str:
     return now_utc().isoformat()
+
+
+def iso_kst() -> str:
+    return now_kst().isoformat()
+
+
+def format_kst(dt: datetime) -> str:
+    return dt.astimezone(KST).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def duration_minutes(start_dt: datetime, end_dt: datetime) -> float:
+    return round((end_dt - start_dt).total_seconds() / 60, 2)
 
 
 def random_wait_seconds(min_seconds: int, max_seconds: int) -> int:
