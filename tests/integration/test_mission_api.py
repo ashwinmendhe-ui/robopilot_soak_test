@@ -19,7 +19,7 @@ def test_mission_search_returns_expected_context(stream_client, auth_headers, te
         assert result["site_id"] == "dbc139ff-98b9-47db-9171-f5fe8351d1df"
         assert result["company_id"] == "9c9bae60-f42c-42d2-a5dc-c2066c0f9d6c"
 
-    elif selection["mission_name"] == "TestForGO2":
+    elif selection["mission_name"] == "TestforGO2":
         assert result["mission_id"] == "7dc50d8e-b328-4342-95eb-57e1c35ef7c4"
         assert result["site_id"] == "dbc139ff-98b9-47db-9171-f5fe8351d1df"
         assert result["company_id"] == "9c9bae60-f42c-42d2-a5dc-c2066c0f9d6c"

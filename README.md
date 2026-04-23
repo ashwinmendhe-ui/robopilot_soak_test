@@ -165,3 +165,8 @@ Company, Site, Robot, Mission
     "device_name": "Unitree GO2"
   }
 ```
+
+## For drone
+python main.py config.drone.json
+## For GO2
+python main.py config.go2.json

@@ -51,9 +51,6 @@ class StreamApiClient:
     def stop_stream(self, headers: Dict[str, str], payload: Dict[str, Any]) -> requests.Response:
         return self._request("POST", self.endpoints["stream_stop"], headers=headers, json_body=payload)
 
-    def get_streams(self, headers: Dict[str, str]) -> requests.Response:
-        return self._request("GET", self.endpoints["stream_list"], headers=headers)
-
     @staticmethod
     def _ensure_list(data: Any) -> List[Dict[str, Any]]:
         if isinstance(data, list):
@@ -63,7 +60,7 @@ class StreamApiClient:
                 return [item for item in data["data"] if isinstance(item, dict)]
             if isinstance(data.get("items"), list):
                 return [item for item in data["items"] if isinstance(item, dict)]
-            return [data] if isinstance(data, dict) else []
+            return [data]
         return []
 
     def resolve_mission_context(
@@ -158,24 +155,34 @@ class StreamApiClient:
             f"Available devices: {available_names}"
         )
 
-    def is_device_stream_active(self, headers: Dict[str, str], device_id: str) -> Tuple[bool, str, Optional[int]]:
-        response = self.get_streams(headers)
-        status_code = response.status_code
-        response.raise_for_status()
+    @staticmethod
+    def parse_start_stream_response(data: Dict[str, Any]) -> Dict[str, Any]:
+        if data.get("code") != 0:
+            raise ValueError(f"Start stream failed: {data}")
 
-        items = self._ensure_list(response.json())
+        stream_data = data.get("data") or {}
 
-        for item in items:
-            current_device_id = item.get("deviceId") or item.get("robotId") or item.get("id")
-            status_value = str(
-                item.get("status")
-                or item.get("streamStatus")
-                or item.get("state")
-                or ""
-            ).lower()
+        return {
+            "stream_id": stream_data.get("streamId", ""),
+            "session_id": stream_data.get("sessionId", ""),
+            "viewer_count": stream_data.get("viewerCount", 0),
+            "start_time": stream_data.get("startTime", ""),
+            "can_stop": stream_data.get("canStop", False),
+            "is_send_heartbeat": stream_data.get("isSendHeartBeat", False),
+        }
 
-            if current_device_id == device_id:
-                is_active = status_value in {"active", "started", "running", "live", "streaming"}
-                return is_active, f"Matched device {device_id} with status={status_value}", status_code
-
-        return False, f"No active stream found for device {device_id}", status_code
+    @staticmethod
+    def parse_stop_stream_response(data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "device_sn": data.get("deviceSn", ""),
+            "playback_url": data.get("playbackUrl", ""),
+            "site_name": data.get("siteName", ""),
+            "device_name": data.get("deviceName", ""),
+            "mission_name": data.get("missionName", ""),
+            "user_name": data.get("userName", ""),
+            "start_time": data.get("startTime", ""),
+            "end_time": data.get("endTime", ""),
+            "total_time": data.get("totalTime", ""),
+            "label_counts": data.get("labelCounts", {}),
+            "bookmarks": data.get("bookmarks", []),
+        }

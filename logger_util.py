@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 import logging
-from typing import Dict, Any
+from typing import Any, Dict
 
 from utils import ensure_parent_dir
 
@@ -10,6 +10,9 @@ from utils import ensure_parent_dir
 CSV_FIELDS = [
     "timestamp",
     "cycle_no",
+    "company_name",
+    "site_name",
+    "mission_name",
     "device_name",
     "device_id",
     "company_id",
@@ -18,11 +21,15 @@ CSV_FIELDS = [
     "action",
     "result",
     "http_status",
-    "wait_seconds",
+    "working_mode",
+    "working_seconds",
+    "idle_mode",
+    "idle_seconds",
     "token_refreshed",
     "message",
     "error_details",
 ]
+
 
 class SoakLogger:
     def __init__(self, txt_path: str, csv_path: str) -> None:

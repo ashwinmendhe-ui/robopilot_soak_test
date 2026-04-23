@@ -1,0 +1,47 @@
+{
+  "base_url": "http://52.64.157.221:6789/api",
+  "endpoints": {
+    "login": "/v1/auth/login",
+    "missions_search": "/v1/missions/search",
+    "devices_list": "/v1/devices",
+    "stream_start": "/v1/stream/start",
+    "stream_stop": "/v1/stream/stop",
+    "stream_list": "/v1/stream"
+  },
+  "auth": {
+    "email": "sysadmin@dhive.vn",
+    "password": "123456",
+    "refresh_after_hours": 48
+  },
+  "selection": {
+    "company_name": "현대건설",
+    "site_name": "힐스테이트 도안2단지",
+    "mission_name": "TestForGO2",
+    "device_name": "Unitree GO2"
+  },
+  "test": {
+    "duration_days": 7,
+    "request_timeout_seconds": 30,
+    "start_check_retries": 10,
+    "stop_check_retries": 10,
+    "check_interval_seconds": 5
+  },
+  "timing_profiles": {
+    "working_time": {
+      "short_min_seconds": 30,
+      "short_max_seconds": 120,
+      "long_min_seconds": 300,
+      "long_max_seconds": 900
+    },
+    "idle_time": {
+      "short_min_seconds": 10,
+      "short_max_seconds": 60,
+      "long_min_seconds": 180,
+      "long_max_seconds": 600
+    }
+  },
+  "logging": {
+    "csv_path": "logs/go2_soak_test_results.csv",
+    "txt_path": "logs/go2_soak_test.log"
+  }
+}
