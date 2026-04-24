@@ -1,172 +1,368 @@
-# ROBOPILOT Soak Test (Stability Test Tool)
+# ROBOPILOT Soak Test / Stability Test Tool
 
 ---
 
 ## 📌 Overview
 
-This project is a **Python-based automation tool** designed to perform a **Soak Test / Stability Test** on the ROBOPILOT streaming service.
+This project is a **Python-based automation tool** used to run long-duration **soak/stability testing** for the ROBOPILOT streaming service.
 
 The script continuously:
-- Starts a stream  
-- Verifies streaming status  
-- Stops the stream  
-- Logs results  
-- Repeats the process for a long duration (e.g., 7 days)
+
+* Logs in and gets Bearer token
+* Resolves Company, Site, Mission, and Device
+* Starts stream
+* Checks stream status after start
+* Checks stream status during working time
+* Stops stream
+* Checks stream status after stop
+* Writes CSV and TXT logs
+* Repeats until configured duration is completed
 
 ---
 
 ## 🎯 Objective
 
-- Validate system stability over long-duration execution  
-- Detect failures in start/stop streaming  
-- Monitor streaming reliability  
-- Capture logs for analysis  
+* Validate stream stability over long duration
+* Detect stream start/stop failures
+* Detect unexpected stream drop during working time
+* Capture logs for analysis
+* Support GO2 and Drone scenarios via config
 
 ---
 
 ## ⚙️ Features
 
-- Automated Start/Stop Stream Testing  
-- Random interval execution (30 sec – 15 min)  
-- Bearer token authentication with auto refresh  
-- Stream status verification  
-- Continuous execution (configurable duration)  
-- CSV + TXT logging  
-- Config-driven (no code changes required)  
+* Config-driven execution
+* Multiple config file support
+* Bearer token authentication with auto refresh
+* Random working and idle durations
+* Mid-stream validation
+* Graceful Ctrl+C stop
+* CSV + TXT logging
+* Dynamic log filenames with timestamp
 
 ---
 
 ## 📂 Project Structure
 
-```
+```text
 robopilot_soak_test/
+├── README.md
 ├── main.py
 ├── auth.py
 ├── stream_api.py
 ├── logger_util.py
 ├── utils.py
-├── config.json
-├── tests/
-│   ├── unit/
-│   │   ├── test_utils.py
-│   │   ├── test_auth.py
-│   │   ├── test_stream_api.py
-│   │   └── test_logger_util.py
-│   └── integration/
-│       ├── test_login_api.py
-│       ├── test_mission_api.py
-│       ├── test_device_api.py
-│       └── test_stream_flow.py
+├── config.test.json
+├── config_drone.json
+├── config_go2.json
 ├── requirements.txt
-└── .gitignore
+├── .gitignore
+├── logs/
+└── tests/
+    ├── unit/
+    │   ├── test_utils.py
+    │   ├── test_auth.py
+    │   ├── test_stream_api.py
+    │   └── test_logger_util.py
+    └── integration/
+        ├── test_login_api.py
+        ├── test_mission_api.py
+        ├── test_device_api.py
+        └── test_stream_flow.py
+```
+
+> Note: `__pycache__/` and logs should NOT be committed.
+
+---
+
+## 🧰 Prerequisites
+
+* Python **3.9+**
+
+Check version:
+
+```bash
+python --version
 ```
 
 ---
 
-## 🔧 Configuration
+## 🐍 Python Installation
 
-Update `config.json` before running:
+### macOS
 
-```json
-{
-  "base_url": "http://52.64.157.221:6789/api",
-  "auth": {
-    "email": "your_email",
-    "password": "your_password",
-    "refresh_after_hours": 48
-  },
-  "selection": {
-    "company_id": "UUID",
-    "site_id": "UUID",
-    "mission_id": "UUID",
-    "device_id": "UUID",
-    "device_name": "Drone-01"
-  }
-}
+```bash
+brew install python
 ```
 
 ---
 
-## 🔐 Authentication
+### Ubuntu
 
-- Uses `POST /v1/auth/login`  
-- Stores Bearer token in memory  
-- Automatically refreshes token before expiry  
-
----
-
-## 🔁 Test Flow
-
-```
-Login → Start Stream → Verify → Wait (random)
-→ Stop Stream → Verify → Log → Repeat
+```bash
+sudo apt update
+sudo apt install python3 python3-pip python3-venv -y
 ```
 
 ---
 
-## 📊 Logging
+### Windows
 
-### CSV Log
-`logs/soak_test_results.csv`
+Download from:
+https://www.python.org/downloads/
 
-### TXT Log
-`logs/soak_test.log`
+✔️ Enable: **Add Python to PATH**
 
 ---
 
-## 🚀 Setup & Run
+## 🚀 Setup
+
+### macOS / Ubuntu
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python main.py
 ```
 
 ---
 
-## ☁️ Deployment Recommendation
+### Windows
 
-- Use VM / EC2 for long-duration execution  
-- Avoid local machine  
-- Use tmux / screen for stability  
+```powershell
+python -m venv .venv
+.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+---
+
+## ⚙️ Configuration
+
+### Duration Format (Recommended)
+
+```json
+"test": {
+  "duration": {
+    "days": 0,
+    "hours": 0,
+    "minutes": 30
+  },
+  "cycle_buffer_seconds": 30
+}
+```
+
+---
+
+### Logging Format
+
+```json
+"logging": {
+  "csv_path": "logs/{mission_name}_{device_name}_{timestamp}.csv",
+  "txt_path": "logs/{mission_name}_{device_name}_{timestamp}.log"
+}
+```
+
+Example output:
+
+```text
+logs/TestforGO2_Unitree_GO2_2026-04-24_16-30-15.csv
+logs/TestforGO2_Unitree_GO2_2026-04-24_16-30-15.log
+```
+
+---
+
+## 📥 Inputs (Selection)
+
+### GO2
+
+```json
+"selection": {
+  "company_name": "현대건설",
+  "site_name": "힐스테이트 도안2단지",
+  "mission_name": "TestforGO2",
+  "device_name": "Unitree GO2"
+}
+```
+
+---
+
+### Drone
+
+```json
+"selection": {
+  "company_name": "현대건설",
+  "site_name": "힐스테이트 도안2단지",
+  "mission_name": "TestForDrone",
+  "device_name": "DJI M4E"
+}
+```
+
+---
+
+## ▶️ Run Commands
+
+### GO2
+
+```bash
+python main.py config_go2.json
+```
+
+---
+
+### Drone
+
+```bash
+python main.py config_drone.json
+```
+
+---
+
+## 📊 Output Location
+
+All outputs are stored in:
+
+```text
+logs/
+```
+
+---
+
+### 📄 TXT Log (Execution Details)
+
+```text
+logs/<mission>_<device>_<timestamp>.log
+```
+
+Contains:
+
+* Start/end logs
+* Cycle execution
+* Stream start/stop
+* Mid-stream checks
+* Errors
+
+---
+
+### 📊 CSV Log (Results)
+
+```text
+logs/<mission>_<device>_<timestamp>.csv
+```
+
+Contains:
+
+* cycle_no
+* expected vs actual time
+* time difference
+* working/idle durations
+* result (success/failure)
+* error details
+
+---
+
+## 🔁 Test Flow
+
+```text
+Login
+ → Resolve Context
+ → Start Stream
+ → Verify Start
+ → Working Loop (status checks)
+ → Stop Stream
+ → Verify Stop
+ → Log Results
+ → Idle
+ → Repeat
+```
+
+---
+
+## 🛑 Manual Stop
+
+Press:
+
+```text
+Ctrl + C
+```
+
+System will:
+
+* Stop active stream
+* Save CSV entry
+* Exit safely
+
+---
+
+## 🚫 Git Ignore
+
+Add:
+
+```gitignore
+__pycache__/
+*.pyc
+.venv/
+logs/
+```
+
+If logs already tracked:
+
+```bash
+git rm -r --cached logs/
+```
+
+---
+
+## ☁️ Long Duration Run (Recommended)
+
+Use VM / EC2 with `tmux`:
+
+```bash
+tmux new -s soak-test
+python main.py config_go2.json
+```
+
+Detach:
+
+```text
+Ctrl + B → D
+```
+
+---
+
+## 🧪 Troubleshooting
+
+### Python not found
+
+Use:
+
+```bash
+python3 --version
+```
+
+---
+
+### Logs not generated
+
+Create folder:
+
+```bash
+mkdir logs
+```
+
+---
+
+### Stream stopped unexpectedly
+
+Check TXT log for:
+
+```text
+Stream stopped unexpectedly
+```
 
 ---
 
 ## 👨‍💻 Author
 
 ROBOPILOT Stability Testing Tool
-
-
-
-## Given inputs
-Company, Site, Robot, Mission
-
-    - Drone: FPT, Duy Tan, M4E Display Name, TestForDrone
-
-    - GO2: 현대건설, 힐스테이트 도안2단지, Unitree GO2, TestForGO2
-
-## option 1 in config
-```
-"selection": {
-    "company_name": "현대건설",
-    "site_name": "힐스테이트 도안2단지",
-    "mission_name": "TestForDrone",
-    "device_name": "DJI M4E"
-  }
-```
-
-## option 2 in config
-```
-"selection": {
-    "company_name": "현대건설",
-    "site_name": "힐스테이트 도안2단지",
-    "mission_name": "TestforGO2",
-    "device_name": "Unitree GO2"
-  }
-```
-
-## For drone
-python main.py config_drone.json
-## For GO2
-python main.py config_go2.json
