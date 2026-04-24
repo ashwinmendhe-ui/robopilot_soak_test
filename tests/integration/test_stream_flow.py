@@ -1,18 +1,6 @@
 import time
 
 
-def build_stream_payload(context, stream_defaults):
-    return {
-        "deviceSn": context["device_sn"],
-        "urlType": stream_defaults["url_type"],
-        "videoId": stream_defaults["video_id"],
-        "videoQuality": stream_defaults["video_quality"],
-        "videoType": stream_defaults["video_type"],
-        "missionId": context["mission_id"],
-        "playbackUrl": ""
-    }
-
-
 def test_stream_start_stop_flow(stream_client, auth_headers, auth_session, test_config):
     selection = test_config["selection"]
     stream_defaults = test_config["stream_defaults"]
@@ -39,7 +27,16 @@ def test_stream_start_stop_flow(stream_client, auth_headers, auth_session, test_
         "username": auth_session.username,
     }
 
-    start_payload = build_stream_payload(context, stream_defaults)
+    start_payload = {
+        "deviceSn": context["device_sn"],
+        "urlType": stream_defaults["url_type"],
+        "videoId": stream_defaults["video_id"],
+        "videoQuality": stream_defaults["video_quality"],
+        "videoType": stream_defaults["video_type"],
+        "missionId": context["mission_id"],
+        "playbackUrl": "",
+    }
+
     start_response = stream_client.start_stream(auth_headers, start_payload)
     start_response.raise_for_status()
 
@@ -51,10 +48,54 @@ def test_stream_start_stop_flow(stream_client, auth_headers, auth_session, test_
     assert start_data["session_id"]
     assert start_data["can_stop"] is True
 
-    time.sleep(5)
+    status_ok = False
+    last_status_json = None
 
-    stop_payload = build_stream_payload(context, stream_defaults)
+    for _ in range(test_config["test"]["start_check_retries"]):
+        status_response = stream_client.get_stream_status(auth_headers, context["device_sn"])
+        status_response.raise_for_status()
+
+        last_status_json = status_response.json()
+        is_streaming = stream_client.parse_stream_status_response(last_status_json)
+
+        if is_streaming is True:
+            status_ok = True
+            break
+
+        time.sleep(test_config["test"]["check_interval_seconds"])
+
+    assert status_ok is True, f"Stream did not become active: {last_status_json}"
+
+    time.sleep(30)
+
+    stop_payload = {
+        "deviceSn": context["device_sn"],
+        "urlType": stream_defaults["url_type"],
+        "videoId": stream_defaults["video_id"],
+        "videoQuality": stream_defaults["video_quality"],
+        "videoType": stream_defaults["video_type"],
+        "missionId": context["mission_id"],
+        "playbackUrl": "",
+    }
+
     stop_response = stream_client.stop_stream(auth_headers, stop_payload)
     stop_response.raise_for_status()
-
     assert stop_response.status_code == 200
+
+    stop_ok = False
+    last_status_json = None
+
+    for _ in range(test_config["test"]["stop_check_retries"]):
+        status_response = stream_client.get_stream_status(auth_headers, context["device_sn"])
+        status_response.raise_for_status()
+
+        last_status_json = status_response.json()
+        is_streaming = stream_client.parse_stream_status_response(last_status_json)
+
+        if is_streaming is False:
+            stop_ok = True
+            break
+
+        time.sleep(test_config["test"]["check_interval_seconds"])
+
+    assert stop_ok is True, f"Stream did not stop correctly: {last_status_json}"

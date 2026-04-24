@@ -5,7 +5,7 @@ import random
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Tuple
-
+from zoneinfo import ZoneInfo
 
 UTC = timezone.utc
 KST = timezone(timedelta(hours=9))
@@ -83,3 +83,52 @@ def pick_duration(profile: Dict[str, int]) -> Tuple[str, int]:
         )
 
     return mode, seconds
+
+def seconds_to_min_sec(seconds: int | float) -> str:
+    seconds = int(seconds)
+    minutes = seconds // 60
+    remaining_seconds = seconds % 60
+    return f"{minutes}.{remaining_seconds:02d}min ({seconds} sec)"
+
+
+def duration_min_sec(start_dt, end_dt):
+    total_seconds = int((end_dt - start_dt).total_seconds())
+    return seconds_to_min_sec(total_seconds)
+
+
+def duration_difference_min_sec(expected_seconds, actual_seconds):
+    diff = actual_seconds - expected_seconds
+    sign = "-" if diff < 0 else "+"
+    return f"{sign}{seconds_to_min_sec(abs(diff))}"
+
+
+def format_total_duration(seconds: int) -> str:
+    days = seconds // 86400
+    hours = (seconds % 86400) // 3600
+    minutes = (seconds % 3600) // 60
+    secs = seconds % 60
+
+    parts = []
+    if days:
+        parts.append(f"{days}d")
+    if hours:
+        parts.append(f"{hours}h")
+    if minutes:
+        parts.append(f"{minutes}m")
+    if secs:
+        parts.append(f"{secs}s")
+
+    return " ".join(parts)
+
+def generate_log_file_path(template: str, selection: dict) -> str:
+    kst = ZoneInfo("Asia/Seoul")  # KST timezone
+    timestamp = datetime.now(kst).strftime("%Y-%m-%d_%H-%M-%S")
+
+    mission_name = selection.get("mission_name", "unknown").replace(" ", "_")
+    device_name = selection.get("device_name", "device").replace(" ", "_")
+
+    return template.format(
+        mission_name=mission_name,
+        device_name=device_name,
+        timestamp=timestamp
+    )

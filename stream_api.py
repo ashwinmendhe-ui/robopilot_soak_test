@@ -186,3 +186,19 @@ class StreamApiClient:
             "label_counts": data.get("labelCounts", {}),
             "bookmarks": data.get("bookmarks", []),
         }
+    
+    def get_stream_status(self, headers: Dict[str, str], device_sn: str) -> requests.Response:
+        return self._request(
+            "GET",
+            self.endpoints["stream_status"],
+            headers=headers,
+            params={"deviceSn": device_sn},
+        )
+
+
+    @staticmethod
+    def parse_stream_status_response(data: Dict[str, Any]) -> bool:
+        if data.get("code") != 0:
+            raise ValueError(f"Stream status check failed: {data}")
+
+        return bool(data.get("data", {}).get("streaming", False))

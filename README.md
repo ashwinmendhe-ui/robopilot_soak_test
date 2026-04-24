@@ -167,6 +167,6 @@ Company, Site, Robot, Mission
 ```
 
 ## For drone
-python main.py config.drone.json
+python main.py config_drone.json
 ## For GO2
-python main.py config.go2.json
+python main.py config_go2.json

@@ -6,7 +6,9 @@
     "missions_search": "/v1/missions/search",
     "devices_list": "/v1/devices",
     "stream_start": "/v1/live/streams/start",
-    "stream_stop": "/v1/live/streams/stop"
+    "stream_stop": "/v1/live/streams/stop",
+    "stream_status": "/v1/live/streams/status"
+
   },
 
   "auth": {
@@ -38,9 +40,18 @@
   },
 
   "test": {
-    "duration_days": 0.005,
-    "request_timeout_seconds": 30
+  "duration": {
+    "days": 0,
+    "hours": 0,
+    "minutes": 5
   },
+  "request_timeout_seconds": 30,
+  "start_check_retries": 6,
+  "stop_check_retries": 6,
+  "check_interval_seconds": 5,
+  "mid_stream_check_interval_seconds": 15,
+  "cycle_buffer_seconds": 30
+},
 
   "timing_profiles": {
     "working_time": {
@@ -58,7 +69,7 @@
   },
 
   "logging": {
-    "csv_path": "logs/soak_test_results_GO2.csv",
-    "txt_path": "logs/soak_test_results_GO2.log"
+    "csv_path": "logs/{mission_name}_{device_name}_{timestamp}.csv",
+   "txt_path": "logs/{mission_name}_{device_name}_{timestamp}.log"
   }
 }
