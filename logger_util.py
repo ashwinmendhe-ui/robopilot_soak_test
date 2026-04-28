@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from email.mime import message
 import logging
 from typing import Any, Dict
 
@@ -83,3 +84,6 @@ class SoakLogger:
                 "timestamp_utc": timestamp_utc,
             }
         )
+
+    def warning(self, message: str):
+        self.logger.warning(message)

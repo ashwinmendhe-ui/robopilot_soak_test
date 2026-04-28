@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Tuple
 from zoneinfo import ZoneInfo
+import pandas as pd
+import os
 
 UTC = timezone.utc
 KST = timezone(timedelta(hours=9))
@@ -132,3 +134,18 @@ def generate_log_file_path(template: str, selection: dict) -> str:
         device_name=device_name,
         timestamp=timestamp
     )
+
+def create_reversed_csv(csv_path: str):
+    if not os.path.exists(csv_path):
+        return
+
+    df = pd.read_csv(csv_path)
+
+    # reverse order (latest first)
+    df = df.iloc[::-1]
+
+    reversed_path = csv_path.replace(".csv", "_latest_first.csv")
+
+    df.to_csv(reversed_path, index=False)
+
+    return reversed_path

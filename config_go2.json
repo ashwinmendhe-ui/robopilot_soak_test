@@ -43,14 +43,16 @@
   "duration": {
     "days": 0,
     "hours": 0,
-    "minutes": 5
+    "minutes": 20
   },
   "request_timeout_seconds": 30,
   "start_check_retries": 6,
   "stop_check_retries": 6,
   "check_interval_seconds": 5,
   "mid_stream_check_interval_seconds": 15,
-  "cycle_buffer_seconds": 30
+  "cycle_buffer_seconds": 30,
+  "false_confirm_retries": 3,
+"false_confirm_interval_seconds": 5
 },
 
   "timing_profiles": {

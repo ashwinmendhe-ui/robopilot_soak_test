@@ -23,6 +23,7 @@ from utils import (
     pick_duration,
     seconds_to_min_sec,
     should_refresh_token,
+    create_reversed_csv
 )
 
 
@@ -85,6 +86,8 @@ def monitor_stream_during_working_time(
     work_seconds: int,
     check_interval_seconds: int,
     logger: SoakLogger,
+    false_confirm_retries: int = 3,
+    false_confirm_interval_seconds: int = 3,
 ):
     remaining_seconds = work_seconds
 
@@ -108,15 +111,53 @@ def monitor_stream_during_working_time(
         is_streaming = stream_client.parse_stream_status_response(status_json)
 
         if not is_streaming:
-            raise Exception(
-                f"Stream stopped unexpectedly during working period: {status_json}"
+            max_possible_retries = remaining_seconds // false_confirm_interval_seconds
+            effective_retries = min(false_confirm_retries, max_possible_retries)
+
+            if effective_retries <= 0:
+                effective_retries = 1
+            logger.warning(
+                f"[Cycle {cycle}] ⚠️ Stream status returned false. "
+                f"Confirming with {effective_retries} more checks..."
             )
+
+            confirmed_stopped = True
+
+            for confirm_attempt in range(1, effective_retries + 1):
+                time.sleep(false_confirm_interval_seconds)
+
+                remaining_seconds -= false_confirm_interval_seconds
+                remaining_seconds = max(0, remaining_seconds)
+
+                confirm_response = stream_client.get_stream_status(headers, device_sn)
+                confirm_response.raise_for_status()
+
+                confirm_json = confirm_response.json()
+                confirm_streaming = stream_client.parse_stream_status_response(confirm_json)
+
+                if confirm_streaming:
+                    confirmed_stopped = False
+                    logger.info(
+                        f"[Cycle {cycle}] ✅ Stream recovered during confirmation "
+                        f"(attempt {confirm_attempt}/{effective_retries})"
+                    )
+                    break
+
+                logger.warning(
+                    f"[Cycle {cycle}] ⚠️ Stream still false "
+                    f"(confirm {confirm_attempt}/{effective_retries})"
+                )
+
+            if confirmed_stopped:
+                raise Exception(
+                    f"Stream stopped unexpectedly during working period "
+                    f"after {effective_retries + 1} consecutive false checks: {status_json}"
+                )
 
         logger.info(
             f"[Cycle {cycle}] ✅ Mid-stream status confirmed active "
             f"({seconds_to_min_sec(remaining_seconds)} remaining)"
         )
-
 
 def build_duration_fields(cycle_start_kst, cycle_end_kst, expected_seconds):
     if not cycle_start_kst or not cycle_end_kst:
@@ -329,6 +370,8 @@ def main() -> None:
                     work_seconds=work_seconds,
                     check_interval_seconds=test_cfg["mid_stream_check_interval_seconds"],
                     logger=logger,
+                    false_confirm_retries=test_cfg.get("false_confirm_retries", 5),
+                    false_confirm_interval_seconds=test_cfg.get("false_confirm_interval_seconds", 3),
                 )
 
                 cycle_end_kst = now_kst()
@@ -514,6 +557,15 @@ def main() -> None:
             }
         )
 
+    try:
+        reversed_path = create_reversed_csv(csv_path)
+        if reversed_path:
+            logger.info(f"📄 Reversed CSV created: {reversed_path}")
+    except Exception as e:
+        logger.error(f"Failed to create reversed CSV: {e}")
+
     logger.info("✅ Soak test completed")
+
+
 if __name__ == "__main__":
     main()
