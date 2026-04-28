@@ -77,3 +77,26 @@ Expected Response (STOP)
   "labelCounts": {},
   "bookmarks": []
 }
+
+
+## for adding new remote url in github
+# first check 
+git remote -v
+# add
+git remote add DhiveTeam git@github.com:DHiveTeam/robopilot_soak_test.git
+# check again 
+git remote -v 
+# response
+DhiveTeam       git@github.com:DHiveTeam/robopilot_soak_test.git (fetch)
+DhiveTeam       git@github.com:DHiveTeam/robopilot_soak_test.git (push)
+origin  git@github.com:ashwinmendhe-ui/robopilot_soak_test.git (fetch)
+origin  git@github.com:ashwinmendhe-ui/robopilot_soak_test.git (push)
+
+## then push 
+git push DhiveTeam main
+
+## if want to push any other remote url 
+git push origin main
+
+## or in both 
+git push origin main && git push dhive main
