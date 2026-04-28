@@ -43,7 +43,7 @@
   "duration": {
     "days": 0,
     "hours": 0,
-    "minutes": 5
+    "minutes": 30
   },
   "request_timeout_seconds": 30,
   "start_check_retries": 6,
