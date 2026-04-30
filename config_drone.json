@@ -1,5 +1,5 @@
 {
-  "base_url": "http://52.64.157.221:6789/api",
+  "base_url": "http://43.202.9.216:6789/api",
 
   "endpoints": {
     "login": "/v1/auth/login",
