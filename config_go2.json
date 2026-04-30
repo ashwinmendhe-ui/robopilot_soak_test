@@ -1,5 +1,6 @@
 {
   "base_url": "http://43.202.9.216:6789/api",
+  "cloudfront_base_url": "https://d16v60d6se8ibf.cloudfront.net",
 
   "endpoints": {
     "login": "/v1/auth/login",
@@ -43,7 +44,7 @@
   "duration": {
     "days": 0,
     "hours": 0,
-    "minutes": 20
+    "minutes": 5
   },
   "request_timeout_seconds": 30,
   "start_check_retries": 6,
@@ -52,12 +53,13 @@
   "mid_stream_check_interval_seconds": 15,
   "cycle_buffer_seconds": 30,
   "false_confirm_retries": 3,
-"false_confirm_interval_seconds": 5
+  "false_confirm_interval_seconds": 5,
+  "pre_stop_buffer_seconds": 10
 },
 
   "timing_profiles": {
     "working_time": {
-      "short_min_seconds": 30,
+      "short_min_seconds": 60,
       "short_max_seconds": 120,
       "long_min_seconds": 300,
       "long_max_seconds": 900

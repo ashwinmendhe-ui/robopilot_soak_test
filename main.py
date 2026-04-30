@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import os
 import sys
 import time
 from datetime import timedelta
-from venv import logger
-
 from auth import AuthClient
 from logger_util import SoakLogger
 from stream_api import StreamApiClient
@@ -184,6 +183,59 @@ def build_duration_fields(cycle_start_kst, cycle_end_kst, expected_seconds):
     }
 
 
+
+def stop_stream_safely(
+    stream_client,
+    headers,
+    context,
+    stream_defaults,
+    logger: SoakLogger,
+    cycle: int | str,
+    pre_stop_buffer_seconds: int = 0,
+    reason: str = "normal",
+    playback_url: str = "",
+):
+    if pre_stop_buffer_seconds > 0:
+        logger.info(
+            f"[Cycle {cycle}] ⏳ Waiting {pre_stop_buffer_seconds} sec before STOP "
+            f"to allow backend processing | reason={reason}"
+        )
+        time.sleep(pre_stop_buffer_seconds)
+
+    stop_payload = build_stream_payload(
+        context=context,
+        stream_defaults=stream_defaults,
+        playback_url=playback_url,
+    )
+
+    logger.info(f"[Cycle {cycle}] ⏹ STOP stream | reason={reason}")
+    logger.info(f"[Cycle {cycle}] STOP payload: {stop_payload}")
+
+    stop_res = stream_client.stop_stream(headers, stop_payload)
+    stop_res.raise_for_status()
+
+    if stop_res.status_code != 200:
+        raise Exception("Stop failed")
+
+    logger.info(f"[Cycle {cycle}] STOP status code: {stop_res.status_code}")
+    logger.info(f"[Cycle {cycle}] STOP content-type: {stop_res.headers.get('Content-Type')}")
+    logger.info(f"[Cycle {cycle}] STOP raw response: {stop_res.text}")
+
+    try:
+        stop_json = stop_res.json()
+        logger.info(f"[Cycle {cycle}] STOP API response JSON: {stop_json}")
+
+        if not stop_json or "playbackUrl" not in stop_json:
+            logger.warning(f"[Cycle {cycle}] ⚠️ STOP response JSON has no playbackUrl")
+
+    except Exception as json_error:
+        logger.warning(
+            f"[Cycle {cycle}] ⚠️ STOP response is not JSON. json_error={json_error}"
+        )
+
+    logger.info(f"[Cycle {cycle}] ✅ Stream stopped")
+    return stop_res
+
 def main() -> None:
     config_path = sys.argv[1] if len(sys.argv) > 1 else "config.json"
     config = load_config(config_path)
@@ -196,6 +248,7 @@ def main() -> None:
     timing_profiles = config["timing_profiles"]
     stream_defaults = config["stream_defaults"]
     log_cfg = config["logging"]
+    pre_stop_buffer_seconds = int(test_cfg.get("pre_stop_buffer_seconds", 0))
 
     csv_path = generate_log_file_path(log_cfg["csv_path"], selection)
     txt_path = generate_log_file_path(log_cfg["txt_path"], selection)
@@ -269,6 +322,7 @@ def main() -> None:
     http_status = ""
     token_refreshed = "no"
     session_id = ""
+    playback_url = ""
 
     try:
         while now_utc() < end_time:
@@ -321,15 +375,30 @@ def main() -> None:
                     token_refreshed = "yes"
                     logger.info("🔄 Token refreshed")
 
-                start_payload = build_stream_payload(context, stream_defaults)
+                # start_payload = build_stream_payload(context, stream_defaults)
+                playback_folder = now_kst().strftime("%Y-%m-%d_%H-%M-%S")
+                playback_url = (
+                    f"{config['cloudfront_base_url']}/streams/"
+                    f"{context['device_sn']}/{playback_folder}/index.m3u8"
+                )
+
+                start_payload = build_stream_payload(
+                    context=context,
+                    stream_defaults=stream_defaults,
+                    playback_url=""
+                )
 
                 logger.info(f"[Cycle {cycle}] ▶ START stream")
+                logger.info(f"365 [Cycle {cycle}] START payload: {start_payload}")
                 start_res = stream_client.start_stream(headers, start_payload)
                 http_status = start_res.status_code
                 start_res.raise_for_status()
 
                 start_json = start_res.json()
-
+                logger.info(f"[Cycle {cycle}] START API response: {start_json}")
+                start_playback_url = start_json.get("data", {}).get("playbackUrl", "")
+                if start_playback_url:
+                    playback_url = start_playback_url
                 if start_json.get("code") != 0:
                     raise Exception(f"Start failed: {start_json}")
 
@@ -376,19 +445,20 @@ def main() -> None:
 
                 cycle_end_kst = now_kst()
 
-                stop_payload = build_stream_payload(context, stream_defaults)
+                stop_res = stop_stream_safely(
+                    stream_client=stream_client,
+                    headers=headers,
+                    context=context,
+                    stream_defaults=stream_defaults,
+                    logger=logger,
+                    cycle=cycle,
+                    pre_stop_buffer_seconds=pre_stop_buffer_seconds,
+                    reason="cycle_complete",
+                    playback_url=playback_url,
+                )
 
-                logger.info(f"[Cycle {cycle}] ⏹ STOP stream")
-                stop_res = stream_client.stop_stream(headers, stop_payload)
                 http_status = stop_res.status_code
-                stop_res.raise_for_status()
-
-                if stop_res.status_code != 200:
-                    raise Exception("Stop failed")
-
                 stream_active = False
-
-                logger.info(f"[Cycle {cycle}] ✅ Stream stopped")
                 logger.info(f"[Cycle {cycle}] 🔍 Checking stream status after STOP")
 
                 stop_status_ok, stop_status_json = verify_streaming_state(
@@ -467,10 +537,19 @@ def main() -> None:
                         logger.info(
                             f"[Cycle {cycle}] ⚠️ Attempting to stop active stream after error..."
                         )
-                        stop_payload = build_stream_payload(context, stream_defaults)
-                        stop_res = stream_client.stop_stream(headers, stop_payload)
+                        stop_res = stop_stream_safely(
+                            stream_client=stream_client,
+                            headers=headers,
+                            context=context,
+                            stream_defaults=stream_defaults,
+                            logger=logger,
+                            cycle=cycle,
+                            pre_stop_buffer_seconds=pre_stop_buffer_seconds,
+                            reason="cycle_error_cleanup",
+                            playback_url=playback_url,
+                        )
+
                         http_status = stop_res.status_code
-                        stop_res.raise_for_status()
                         stream_active = False
                         logger.info(f"[Cycle {cycle}] ✅ Stream stopped after error")
                     except Exception as stop_error:
@@ -520,10 +599,19 @@ def main() -> None:
         if stream_active:
             try:
                 logger.info("⚠️ Stopping active stream before exit...")
-                stop_payload = build_stream_payload(context, stream_defaults)
-                stop_res = stream_client.stop_stream(headers, stop_payload)
+                stop_res = stop_stream_safely(
+                    stream_client=stream_client,
+                    headers=headers,
+                    context=context,
+                    stream_defaults=stream_defaults,
+                    logger=logger,
+                    cycle=cycle,
+                    pre_stop_buffer_seconds=pre_stop_buffer_seconds,
+                    reason="manual_stop",
+                    playback_url=playback_url,
+                )
+
                 http_status = stop_res.status_code
-                stop_res.raise_for_status()
                 stream_active = False
                 logger.info("✅ Stream stopped during shutdown")
             except Exception as e:
@@ -561,6 +649,11 @@ def main() -> None:
         reversed_path = create_reversed_csv(csv_path)
         if reversed_path:
             logger.info(f"📄 Reversed CSV created: {reversed_path}")
+            try:
+                os.remove(csv_path)
+                logger.info(f"🗑️ Original CSV deleted: {csv_path}")
+            except Exception as e:
+                logger.error(f"Failed to delete original CSV: {e}")
     except Exception as e:
         logger.error(f"Failed to create reversed CSV: {e}")
 
